@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 
 namespace ProgTetelek
@@ -178,9 +178,9 @@ namespace ProgTetelek
             return array;
         }
 
-        public static IEnumerable<K> OrderBy<T, K>(this IEnumerable<T> collection, Func<T, K> selector) where K : IComparable<K>
+        public static IEnumerable<A> OrderBy<T, A>(this IEnumerable<T> collection, Func<T, A> selector) where A : IComparable<A>
         {
-            K[] array = collection.Select(selector).ToArray();
+            A[] array = collection.Select(selector).ToArray();
             QuickSort(ref array, 0, array.Length - 1);
             return array;
         }
@@ -192,9 +192,9 @@ namespace ProgTetelek
             return array.Reverse();
         }
 
-        public static IEnumerable<K> OrderByDesc<T, K>(this IEnumerable<T> collection, Func<T, K> selector) where K : IComparable<K>
+        public static IEnumerable<A> OrderByDesc<T, A>(this IEnumerable<T> collection, Func<T, A> selector) where A : IComparable<A>
         {
-            K[] array = collection.Select(selector).ToArray();
+            A[] array = collection.Select(selector).ToArray();
             QuickSort(ref array, 0, array.Length - 1);
             return array.Reverse();
         }
@@ -208,7 +208,7 @@ namespace ProgTetelek
             return array;
         }
 
-        public static IEnumerable<K> Select<T, K>(this IEnumerable<T> collection, Func<T, K> selector)
+        public static IEnumerable<A> Select<T, A>(this IEnumerable<T> collection, Func<T, A> selector)
         {
             foreach (T item in collection)
                 yield return selector(item);
@@ -241,11 +241,11 @@ namespace ProgTetelek
             return sum;
         }
 
-        public static K Sum<T, K>(this IEnumerable<T> collection, Func<T, K> selector)
+        public static A Sum<T, A>(this IEnumerable<T> collection, Func<T, A> selector)
         {
             if (collection.Count() == 0)
                 return default;
-            dynamic sum = default(K);
+            dynamic sum = default(A);
             foreach (dynamic item in collection.Select(selector))
                 sum += item;
             return sum;
@@ -259,10 +259,16 @@ namespace ProgTetelek
         public static T[] ToArray<T>(this IEnumerable<T> collection, int count)
         {
             T[] array = new T[count];
+            IEnumerator<T> enumerator = collection.GetEnumerator();
             int i = 0;
-            foreach (T item in collection)
-                array[i++] = item;
+            while (enumerator.MoveNext() && i < count)
+                array[i++] = enumerator.Current;
             return array;
+        }
+
+        public static List<T> ToList<T>(this IEnumerable<T> collection)
+        {
+            return new List<T>(collection);
         }
 
         public static IEnumerable<T> Where<T>(this IEnumerable<T> collection, Func<T, bool> predicate)
