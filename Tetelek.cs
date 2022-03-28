@@ -38,13 +38,23 @@ namespace ProgTetelek
             yield return item;
         }
 
-        public static T Avarage<T>(this IEnumerable<T> collection)
+        public static double Average<T>(this IEnumerable<T> collection) where T : IConvertible
         {
             if (collection.Count() == 0)
-                return default;
-            dynamic sum = default(T);
-            foreach (dynamic item in collection)
-                sum += item;
+                return 0.0;
+            double sum = 0.0;
+            foreach (T item in collection)
+                sum += Convert.ToDouble(item);
+            return sum / collection.Count();
+        }
+
+        public static double Average<T, A>(this IEnumerable<T> collection, Func<T, A> selector) where A : IConvertible
+        {
+            if (collection.Count() == 0)
+                return 0.0;
+            double sum = 0.0;
+            foreach (T item in collection)
+                sum += Convert.ToDouble(selector(item));
             return sum / collection.Count();
         }
 
@@ -355,7 +365,7 @@ namespace ProgTetelek
                     return false;
                 if (!success1 && !success2)
                     return true;
-                if (enumerator1.Current != enumerator2.Current)
+                if (!enumerator1.Current.Equals(enumerator2.Current))
                     return false;
             }
         }
@@ -388,20 +398,20 @@ namespace ProgTetelek
             throw default;
         }
 
-        public static IEnumerable<T> Skip<T>(this IEnumerable<T> collection, int number)
+        public static IEnumerable<T> Skip<T>(this IEnumerable<T> collection, int count)
         {
             IEnumerator<T> enumerator = collection.GetEnumerator();
-            for (int i = 0; i < number; i++)
+            for (int i = 0; i < count; i++)
                 enumerator.MoveNext();
             while (enumerator.MoveNext())
                 yield return enumerator.Current;
         }
 
-        public static IEnumerable<T> SkipLast<T>(this IEnumerable<T> collection, int number)
+        public static IEnumerable<T> SkipLast<T>(this IEnumerable<T> collection, int count)
         {
             IEnumerator<T> enumerator = collection.GetEnumerator();
             int i = 0;
-            while (enumerator.MoveNext() && i++ < number)
+            while (enumerator.MoveNext() && i++ < collection.Count() - count)
                 yield return enumerator.Current;
         }
 
@@ -425,8 +435,12 @@ namespace ProgTetelek
                 if (!predicate(enumerator.Current))
                     break;
             }
-            while (enumerator.MoveNext())
+            while (true)
+            {
                 yield return enumerator.Current;
+                if (!enumerator.MoveNext())
+                    yield break;
+            }
         }
 
         public static T Sum<T>(this IEnumerable<T> collection)
@@ -456,11 +470,10 @@ namespace ProgTetelek
 
         public static T[] ToArray<T>(this IEnumerable<T> collection, int count)
         {
-            T[] array = new T[count];
             IEnumerator<T> enumerator = collection.GetEnumerator();
-            int i = 0;
-            while (enumerator.MoveNext() && i < count)
-                array[i++] = enumerator.Current;
+            T[] array = new T[count];
+            for (int i = 0; enumerator.MoveNext() && i < count; i++)
+                array[i] = enumerator.Current;
             return array;
         }
 
@@ -488,7 +501,7 @@ namespace ProgTetelek
                     yield return item;
         }
     }
-
+             
     public static class Sorting
     {
         public static void QuickSort<T>(ref T[] array, int low, int high) where T : IComparable<T>
