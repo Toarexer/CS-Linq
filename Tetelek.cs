@@ -280,10 +280,10 @@ namespace ProgTetelek
             return array;
         }
 
-        public static IEnumerable<A> OrderBy<T, A>(this IEnumerable<T> collection, Func<T, A> selector) where A : IComparable<A>
+        public static IEnumerable<T> OrderBy<T, A>(this IEnumerable<T> collection, Func<T, A> selector) where A : IComparable<A>
         {
-            A[] array = collection.Select(selector).ToArray();
-            Sorting.QuickSort(ref array, 0, array.Length - 1);
+            T[] array = collection.ToArray();
+            Sorting.QuickSort(ref array, 0, array.Length - 1, selector);
             return array;
         }
 
@@ -294,10 +294,10 @@ namespace ProgTetelek
             return array.Reverse();
         }
 
-        public static IEnumerable<A> OrderByDescending<T, A>(this IEnumerable<T> collection, Func<T, A> selector) where A : IComparable<A>
+        public static IEnumerable<T> OrderByDescending<T, A>(this IEnumerable<T> collection, Func<T, A> selector) where A : IComparable<A>
         {
-            A[] array = collection.Select(selector).ToArray();
-            Sorting.QuickSort(ref array, 0, array.Length - 1);
+            T[] array = collection.ToArray();
+            Sorting.QuickSort(ref array, 0, array.Length - 1, selector);
             return array.Reverse();
         }
 
@@ -514,6 +514,33 @@ namespace ProgTetelek
 
                 QuickSort(ref array, low, pi - 1);
                 QuickSort(ref array, pi + 1, high);
+            }
+        }
+
+        public static void QuickSort<T, A>(ref T[] array, int low, int high, Func<T, A> selector) where A : IComparable<A>
+        {
+            if (low < high)
+            {
+                Comparer<A> comparer = Comparer<A>.Default;
+                T temp;
+                A pivot = selector(array[high]);
+
+                int i = low - 1;
+                for (int j = low; j < high; j++)
+                    if (comparer.Compare(selector(array[j]), pivot) < 0)
+                    {
+                        temp = array[++i];
+                        array[i] = array[j];
+                        array[j] = temp;
+                    }
+
+                temp = array[high];
+                array[high] = array[i + 1];
+                array[i + 1] = temp;
+                int pi = i + 1;
+
+                QuickSort(ref array, low, pi - 1, selector);
+                QuickSort(ref array, pi + 1, high, selector);
             }
         }
     }
