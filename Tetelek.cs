@@ -4,10 +4,49 @@ using System.Collections.Generic;
 
 namespace ProgTetelek
 {
+    public struct GroupedValues<K, V> : IEnumerable<V>
+    {
+        struct GroupedValuesEnumerator : IEnumerator<V>
+        {
+            V[] values;
+            int index;
+
+            public V Current => values[index];
+            object IEnumerator.Current => Current;
+
+            public GroupedValuesEnumerator(V[] values)
+            {
+                this.values = values;
+                index = -1;
+            }
+
+            public bool MoveNext() => ++index < values.Count();
+
+            public void Reset() => index = -1;
+
+            void IDisposable.Dispose() { }
+        }
+
+        public K Key;
+        public V[] Values;
+
+        public GroupedValues(K key, IEnumerable<V> values)
+        {
+            Key = key;
+            Values = new V[values.Count()];
+            int i = 0;
+            foreach (V value in values)
+                Values[i++] = value;
+        }
+
+        public IEnumerator<V> GetEnumerator() => new GroupedValuesEnumerator(Values);
+        IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
+    }
+
     public static class Querry
     {
-        static InvalidOperationException NoElementsException => new InvalidOperationException("Sequence contains no elements");
-        static InvalidOperationException MultipleElementsException => new InvalidOperationException("Sequence contains more or less than one element");
+        static InvalidOperationException NoElementsException => new("Sequence contains no elements");
+        static InvalidOperationException MultipleElementsException => new("Sequence contains more or less than one element");
 
         static void CheckForAnyElemets<T>(IEnumerable<T> collection)
         {
@@ -97,9 +136,19 @@ namespace ProgTetelek
             return c;
         }
 
+        public static IEnumerable<T> DefaultIfEmpty<T>(this IEnumerable<T> collection)
+        {
+            return collection.Empty() ? new T[] { default(T) } : collection;
+        }
+
+        public static IEnumerable<T> DefaultIfEmpty<T>(this IEnumerable<T> collection, T defaultValue)
+        {
+            return collection.Empty() ? new T[] { defaultValue } : collection;
+        }
+
         public static IEnumerable<T> Distinct<T>(this IEnumerable<T> collection)
         {
-            List<T> elements = new List<T>();
+            List<T> elements = new();
             foreach (T item in collection)
                 if (!elements.Contains(item))
                     elements.Add(item);
@@ -168,11 +217,37 @@ namespace ProgTetelek
             return default;
         }
 
+        public static void ForEach<T>(this IEnumerable<T> collection, Action<T> function)
+        {
+            foreach (T item in collection)
+                function(item);
+        }
+
+        public static IEnumerable<GroupedValues<A, T>> GroupBy<T, A>(this IEnumerable<T> collection, Func<T, A> selector)
+        {
+            foreach (A key in collection.Select(selector).Distinct())
+                yield return new GroupedValues<A, T>(key, collection.Where(x => selector(x).Equals(key)));
+        }
+
+        public static IEnumerable<R> GroupJoin<T1, T2, A, R>(this IEnumerable<T1> first, IEnumerable<T2> second, Func<T1, A> selector1, Func<T2, A> selector2, Func<T1, IEnumerable<T2>, R> result) where A : IEquatable<A>
+        {
+            foreach (T1 item in first)
+                yield return result(item, second.Where(x => ((A)selector1(item)).Equals(selector2(x))));
+        }
+        
         public static IEnumerable<T> Intersect<T>(this IEnumerable<T> first, IEnumerable<T> second)
         {
+            List<T> items = new();
             foreach (T item in first)
-                if (second.Contains(item))
-                    yield return item;
+                if (second.Contains(item) && !items.Contains(item))
+                    items.Add(item);
+            return items;
+        }
+
+        public static IEnumerable<R> Join<T1, T2, A, R>(this IEnumerable<T1> first, IEnumerable<T2> second, Func<T1, A> selector1, Func<T2, A> selector2, Func<T1, T2, R> result) where A : IEquatable<A>
+        {
+            foreach (T1 item in first)
+                yield return result(item, second.Single(x => ((A)selector1(item)).Equals(selector2(x))));
         }
 
         public static T Last<T>(this IEnumerable<T> collection)
@@ -286,28 +361,28 @@ namespace ProgTetelek
         public static IEnumerable<T> Order<T>(this IEnumerable<T> collection) where T : IComparable<T>
         {
             T[] array = collection.ToArray();
-            Sorting.QuickSort(ref array, 0, array.Length - 1);
+            Sorting.QuickSort(array, 0, array.Length - 1);
             return array;
         }
 
         public static IEnumerable<T> OrderBy<T, A>(this IEnumerable<T> collection, Func<T, A> selector) where A : IComparable<A>
         {
             T[] array = collection.ToArray();
-            Sorting.QuickSort(ref array, 0, array.Length - 1, selector);
+            Sorting.QuickSort(array, 0, array.Length - 1, selector);
             return array;
         }
 
         public static IEnumerable<T> OrderDescending<T>(this IEnumerable<T> collection) where T : IComparable<T>
         {
             T[] array = collection.ToArray();
-            Sorting.QuickSort(ref array, 0, array.Length - 1);
+            Sorting.QuickSort(array, 0, array.Length - 1);
             return array.Reverse();
         }
 
         public static IEnumerable<T> OrderByDescending<T, A>(this IEnumerable<T> collection, Func<T, A> selector) where A : IComparable<A>
         {
             T[] array = collection.ToArray();
-            Sorting.QuickSort(ref array, 0, array.Length - 1, selector);
+            Sorting.QuickSort(array, 0, array.Length - 1, selector);
             return array.Reverse();
         }
 
@@ -479,12 +554,12 @@ namespace ProgTetelek
 
         public static List<T> ToList<T>(this IEnumerable<T> collection)
         {
-            return new List<T>(collection);
+            return new(collection);
         }
 
         public static IEnumerable<T> Union<T>(this IEnumerable<T> first, IEnumerable<T> second)
         {
-            List<T> items = new List<T>();
+            List<T> items = new();
             foreach (T item in first)
                 if (!items.Contains(item))
                     items.Add(item);
@@ -501,36 +576,35 @@ namespace ProgTetelek
                     yield return item;
         }
     }
-             
+
     public static class Sorting
     {
-        public static void QuickSort<T>(ref T[] array, int low, int high) where T : IComparable<T>
+        public static void QuickSort<T>(T[] array, int low, int high) where T : IComparable<T>
         {
             if (low < high)
             {
                 Comparer<T> comparer = Comparer<T>.Default;
                 T temp, pivot = array[high];
 
-                int i = low - 1;
+                int i = low;
                 for (int j = low; j < high; j++)
                     if (comparer.Compare(array[j], pivot) < 0)
                     {
-                        temp = array[++i];
-                        array[i] = array[j];
+                        temp = array[i];
+                        array[i++] = array[j];
                         array[j] = temp;
                     }
 
                 temp = array[high];
-                array[high] = array[i + 1];
-                array[i + 1] = temp;
-                int pi = i + 1;
+                array[high] = array[i];
+                array[i] = temp;
 
-                QuickSort(ref array, low, pi - 1);
-                QuickSort(ref array, pi + 1, high);
+                QuickSort(array, low, i - 1);
+                QuickSort(array, i + 1, high);
             }
         }
 
-        public static void QuickSort<T, A>(ref T[] array, int low, int high, Func<T, A> selector) where A : IComparable<A>
+        public static void QuickSort<T, A>(T[] array, int low, int high, Func<T, A> selector) where A : IComparable<A>
         {
             if (low < high)
             {
@@ -538,22 +612,21 @@ namespace ProgTetelek
                 T temp;
                 A pivot = selector(array[high]);
 
-                int i = low - 1;
+                int i = low;
                 for (int j = low; j < high; j++)
                     if (comparer.Compare(selector(array[j]), pivot) < 0)
                     {
-                        temp = array[++i];
-                        array[i] = array[j];
+                        temp = array[i];
+                        array[i++] = array[j];
                         array[j] = temp;
                     }
 
                 temp = array[high];
-                array[high] = array[i + 1];
-                array[i + 1] = temp;
-                int pi = i + 1;
+                array[high] = array[i];
+                array[i] = temp;
 
-                QuickSort(ref array, low, pi - 1, selector);
-                QuickSort(ref array, pi + 1, high, selector);
+                QuickSort(array, low, i - 1, selector);
+                QuickSort(array, i + 1, high, selector);
             }
         }
     }
